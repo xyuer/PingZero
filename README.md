@@ -872,7 +872,7 @@ PingZero/
 │   └── global_bypass.yaml       # 全局排除规则
 │
 ├── wails.json                   # Wails 项目配置
-└── go.mod                       # module github.com/yourorg/pingzero
+└── go.mod                       # module github.com/xyuer/PingZero
 ```
 
 ---
@@ -1011,7 +1011,7 @@ t.Connect(serverAddr)
 1. 创建 `internal/tunnel/quic/quic_tunnel.go`
 2. 实现 `Tunnel` 接口
 3. 在 `init()` 调用 `tunnel.Register("quic", ...)`
-4. 在 `cmd/client/main.go` 添加 `import _ "github.com/yourorg/pingzero/internal/tunnel/quic"`
+4. 在 `cmd/client/main.go` 添加 `import _ "github.com/xyuer/PingZero/internal/tunnel/quic"`
 
 ---
 
@@ -1188,6 +1188,92 @@ gopkg.in/yaml.v3                # YAML 配置文件解析
 8. **⚠️ 先启动加速，再启动游戏（关键）**
    - 游戏必须在加速器启动后启动
    - 否则游戏初始 DNS 查询和连接走原始网络，后续无法修复
+
+---
+
+### WinDivert 运行时构建与测试
+
+#### 运行时文件位置
+
+PingZero 通过 `internal/windivert` 动态加载原生 `WinDivert.dll`，并由 DLL 加载同目录下的驱动文件。
+
+当前项目内置的 x64 运行时文件位于：
+
+```
+third_party/windivert/bin/amd64/WinDivert.dll
+third_party/windivert/bin/amd64/WinDivert64.sys
+```
+
+本地运行或打包客户端时，需要把这两个文件复制到客户端 `.exe` 同目录。例如：
+
+```powershell
+Copy-Item third_party\windivert\bin\amd64\WinDivert.dll  .\build\bin\
+Copy-Item third_party\windivert\bin\amd64\WinDivert64.sys .\build\bin\
+```
+
+> 注意：客户端必须以管理员权限运行，否则 `WinDivertOpen` 无法加载内核驱动。
+
+#### 从 WinDivert 源码重新编译
+
+如果 WinDivert 源码位于仓库同级目录 `..\WinDivert`，直接运行：
+
+```powershell
+third_party\windivert\build-windivert.cmd
+```
+
+如果源码在其它位置：
+
+```powershell
+third_party\windivert\build-windivert.cmd -SourceDir E:\workspace\WinDivert
+```
+
+脚本会构建：
+
+- `WinDivert.dll`
+- `WinDivert64.sys`
+
+然后自动复制到：
+
+```
+third_party/windivert/bin/amd64/
+```
+
+当前脚本默认使用：
+
+- Visual Studio: `C:\Program Files\Microsoft Visual Studio\18\Community`
+- MSVC: `14.51.36231`
+- Windows Kit: `10.0.26100.0`
+- KMDF: `1.35`
+- 驱动签名：关闭（`SignMode=Off`）
+
+#### 最小加载测试
+
+1. 先确认运行时文件存在：
+
+```powershell
+Test-Path third_party\windivert\bin\amd64\WinDivert.dll
+Test-Path third_party\windivert\bin\amd64\WinDivert64.sys
+```
+
+2. 构建或运行客户端前，把 `WinDivert.dll` 和 `WinDivert64.sys` 放到客户端 `.exe` 同目录。
+
+3. 使用管理员权限启动客户端。第一次调用 `WinDivertOpen` 时，WinDivert 会尝试加载驱动。
+
+4. 如果加载失败，优先检查：
+   - `.exe` 同目录是否同时存在 `WinDivert.dll` 和 `WinDivert64.sys`
+   - 是否以管理员权限运行
+   - 驱动是否未签名导致 Windows 拒绝加载
+   - Windows 事件查看器中是否有驱动加载错误
+
+#### 驱动签名说明
+
+当前构建脚本生成的是未签名开发构建，可用于本地开发验证。正式发布给普通用户前，需要对 `WinDivert64.sys` 做合法驱动签名，否则 Windows 10/11 默认安全策略可能拒绝加载。
+
+本地测试未正式签名驱动时，请使用测试签名和 Windows Test Mode，详细步骤见：
+
+```
+third_party/windivert/TEST_SIGNING.md
+```
 
 ---
 

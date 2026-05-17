@@ -7,6 +7,10 @@
 *.dll
 *.so
 *.dylib
+!third_party/windivert/bin/
+!third_party/windivert/bin/amd64/
+!third_party/windivert/bin/amd64/WinDivert.dll
+!third_party/windivert/bin/amd64/WinDivert64.sys
 
 # Test binary, built with `go test -c`
 *.test
@@ -19,10 +23,16 @@ profile.cov
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+node_modules/
+frontend/node_modules/
 
 # Go workspace file
 go.work
 go.work.sum
+.gocache/
+
+# Local driver/sdk drops
+/WinDivert/
 
 # env file
 .env

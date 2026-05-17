@@ -1,0 +1,17 @@
+id: lol
+name: League of Legends
+processes:
+  - League of Legends.exe
+  - LeagueClientUx.exe
+accelerate_hosts:
+  - "*.riotgames.com"
+  - "*.leagueoflegends.com"
+bypass:
+  - protocol: tcp
+    cidrs:
+      - 127.0.0.0/8
+      - 10.0.0.0/8
+      - 172.16.0.0/12
+      - 192.168.0.0/16
+    ports: []
+    comment: private networks
